@@ -58,3 +58,38 @@ jobs:
         if: failure()
         run: |
           echo "Build failed. Please check the logs."
+
+
+
+
+  deploy:
+    needs: build  # Deploy stage depends on build job success
+    runs-on: ubuntu-latest
+    steps:
+      # Step 1: Set up Kubectl
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.24.0'  # You can change the version as per your cluster
+
+      # Step 2: Install Helm
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+
+      # Step 3: Configure Kubeconfig (to connect to your local Kubernetes cluster)
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config  # Add your kubeconfig as a GitHub secret
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+
+      # Step 4: Install or Upgrade the Helm chart
+      - name: Helm Install or Upgrade
+        run: |
+          helm upgrade --install hello-world-CD ./helm-chart -f ./helm-chart/values.yaml --set image.repository=ghcr.io/${{ secrets.GHCR_USERNAME }}/simple-web --set image.tag=latest
+
+      # Step 5: Port-forward to access the application locally (Optional)
+      - name: Port-forward Service
+        run: |
+          kubectl port-forward svc/helloworld-chart 8080:80 &
