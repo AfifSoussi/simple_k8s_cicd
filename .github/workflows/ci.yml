@@ -29,29 +29,29 @@ jobs:
         with:
           registry: ghcr.io
           #replace harcoding username as i'm using same account
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.GHCR_USERNAME }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
       # Step 4: Build the Docker image
       - name: Build Docker Image
         id: build
         run: |
-          docker build -t ghcr.io/${{ github.actor }}/simple-web:pipeline -f ./app/dockerfile ./app
+          docker build -t ghcr.io/${{ secrets.GHCR_USERNAME }}/simple-web:pipeline -f ./app/dockerfile ./app
         continue-on-error: false
 
       # Step 5: Push the Docker image if build was successful
       - name: Push Docker Image
         if: success()
         run: |
-          docker push ghcr.io/${{ github.actor }}/simple-web:pipeline
+          docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/simple-web:pipeline
         continue-on-error: false
 
       # Step 6: Tag the image with 'latest' after successful push
       - name: Tag Docker Image
         if: success()
         run: |
-          docker tag ghcr.io/${{ github.actor }}/simple-web:pipeline ghcr.io/${{ github.actor }}/simple-web:latest
-          docker push ghcr.io/${{ github.actor }}/simple-web:latest
+          docker tag ghcr.io/${{ secrets.GHCR_USERNAME }}/simple-web:pipeline ghcr.io/${{ secrets.GHCR_USERNAME }}/simple-web:latest
+          docker push ghcr.io/${{ secrets.GHCR_USERNAME }}/simple-web:latest
 
       # Step 7: fallback control if the build or push fails
       - name: Send Notification on Failure
