@@ -1,0 +1,60 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [main, pipeline]
+
+  pull_request:
+    branches: [main, pipeline]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    #important to read and write packages on ghcr
+    permissions:
+        contents: read
+        packages: write
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      # Step 3: Log in to GitHub Container Registry (GHCR)
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          #replace harcoding username as i'm using same account
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Step 4: Build the Docker image
+      - name: Build Docker Image
+        id: build
+        run: |
+          docker build -t ghcr.io/${{ github.actor }}/simple-web:pipeline -f ./app/dockerfile ./app
+        continue-on-error: false
+
+      # Step 5: Push the Docker image if build was successful
+      - name: Push Docker Image
+        if: success()
+        run: |
+          docker push ghcr.io/${{ github.actor }}/simple-web:pipeline
+        continue-on-error: false
+
+      # Step 6: Tag the image with 'latest' after successful push
+      - name: Tag Docker Image
+        if: success()
+        run: |
+          docker tag ghcr.io/${{ github.actor }}/simple-web:pipeline ghcr.io/${{ github.actor }}/simple-web:latest
+          docker push ghcr.io/${{ github.actor }}/simple-web:latest
+
+      # Step 7: fallback control if the build or push fails
+      - name: Send Notification on Failure
+        if: failure()
+        run: |
+          echo "Build failed. Please check the logs."
